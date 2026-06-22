@@ -1,0 +1,20 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicyNamespaced
+metadata:
+  name: "detect-container-escape-hostpath"
+spec:
+  podSelector:
+    matchLabels:
+      app: system-monitor
+  kprobes:
+
+  # Detect chroot usage
+  - call: "sys_chroot"
+    syscall: true
+    selectors:
+    - matchBinaries:
+      - operator: "In"
+        values:
+        - "/usr/sbin/chroot"
+      matchActions:
+      - action: Sigkill

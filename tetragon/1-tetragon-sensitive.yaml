@@ -1,0 +1,144 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "block-sensitive-keys-in-codebases"
+spec:
+  podSelector:
+    matchLabels:
+      app: build-code
+  kprobes:
+  # Block reads to .git files using sys_read (not working)
+  - call: "sys_read"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values:
+        - ".git/config"
+        - ".git/HEAD"
+        - ".git/objects"
+        - ".git/refs"
+        - ".git/logs"
+        - ".git/index"
+        - "/.git/config"
+        - "/.git/HEAD"
+        - "/.git/objects"
+        - "/.git/refs"
+        - "/.git/logs"
+        - "/.git/index"
+      matchActions:
+      - action: Sigkill
+  # Block reads using sys_readv (vector read) (not working)
+  - call: "sys_readv"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values:
+        - ".git/config"
+        - ".git/HEAD"
+        - ".git/objects"
+        - ".git/refs"
+        - ".git/logs"
+        - ".git/index"
+        - "/.git/config"
+        - "/.git/HEAD"
+        - "/.git/objects"
+        - "/.git/refs"
+        - "/.git/logs"
+        - "/.git/index"
+      matchActions:
+      - action: Sigkill
+  # Block sys_open on .git (not working)
+  - call: "sys_open" 
+    syscall: true
+    args:
+    - index: 0
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values:
+        - ".git/config"
+        - ".git/HEAD"
+        - ".git/objects"
+        - ".git/refs"
+        - ".git/logs"
+        - ".git/index"
+        - "/.git/config"
+        - "/.git/HEAD"
+        - "/.git/objects"
+        - "/.git/refs"
+        - "/.git/logs"
+        - "/.git/index"
+      matchActions:
+      - action: Sigkill
+  # Block sys_openat on .git (not working)
+  - call: "sys_openat"
+    syscall: true
+    args:
+    - index: 1
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 1
+        operator: "Postfix"
+        values:
+        - ".git/config"
+        - ".git/HEAD"
+        - ".git/objects"
+        - ".git/refs"
+        - ".git/logs"
+        - ".git/index"
+        - "/.git/config"
+        - "/.git/HEAD"
+        - "/.git/objects"
+        - "/.git/refs"
+        - "/.git/logs"
+        - "/.git/index"
+      matchActions:
+      - action: Sigkill
+  # Block access to .env files (not working)
+  - call: "sys_open"
+    syscall: true
+    args:
+    - index: 0
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values:
+        - ".env"
+        - "/.env"
+      matchActions:
+      - action: Sigkill
+  - call: "sys_openat"
+    syscall: true
+    args:
+    - index: 1
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 1
+        operator: "Postfix"
+        values:
+        - ".env"
+        - "/.env"
+      matchActions:
+      - action: Sigkill

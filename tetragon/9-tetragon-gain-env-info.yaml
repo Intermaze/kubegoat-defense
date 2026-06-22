@@ -1,0 +1,86 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicyNamespaced
+metadata:
+  name: "block-environment-reconnaissance"
+spec:
+  podSelector:
+    matchLabels:
+      app: system-monitor
+  kprobes:
+  # Block printenv/env execution - reads environment variables (secrets, tokens, kubeconfig)
+  - call: "sys_execve"
+    syscall: true
+    args:
+    - index: 0
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Postfix"
+        values:
+        - "printenv"
+        - "env"
+      matchActions:
+      - action: Sigkill
+
+  # # Block reads to /proc/self/cgroup - reveals container/resource info
+  # - call: "security_file_permission"
+  #   syscall: false
+  #   args:
+  #   - index: 0
+  #     type: "file"
+  #   - index: 1
+  #     type: "int"
+  #   selectors:
+  #   - matchArgs:
+  #     - index: 0
+  #       operator: "Equal"
+  #       values:
+  #       - "/proc/self/cgroup"
+  #       - "/proc/self/mountinfo"
+  #       - "/proc/self/mounts"
+  #     - index: 1
+  #       operator: "Equal"
+  #       values:
+  #       - "4"  # MAY_READ
+  #     matchActions:
+  #     - action: Sigkill
+
+  # # Block reads to /etc/hosts - reveals cluster topology/service discovery
+  # - call: "security_file_permission"
+  #   syscall: false
+  #   args:
+  #   - index: 0
+  #     type: "file"
+  #   - index: 1
+  #     type: "int"
+  #   selectors:
+  #   - matchArgs:
+  #     - index: 0
+  #       operator: "Equal"
+  #       values:
+  #       - "/etc/hosts"
+  #     - index: 1
+  #       operator: "Equal"
+  #       values:
+  #       - "4"  # MAY_READ
+  #     matchActions:
+  #     - action: Sigkill
+
+  # # Below rule might be too aggressive
+  # # Block mount command - used to discover HostPath mounts for escape
+  # - call: "sys_execve"
+  #   syscall: true
+  #   args:
+  #   - index: 0
+  #     type: "string"
+  #   selectors:
+  #   - matchArgs:
+  #     - index: 0
+  #       operator: "Postfix"
+  #       values:
+  #       - "mount"
+  #       - "df"
+  #       - "lsblk"
+  #     matchActions:
+  #     - action: Sigkill

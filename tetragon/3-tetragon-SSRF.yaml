@@ -1,0 +1,35 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicyNamespaced
+metadata:
+  name: "detect-ssrf-k8s"
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: internal-proxy
+
+  kprobes:
+  - call: "sys_connect"
+    syscall: true
+    args:
+    - index: 1
+      type: "sockaddr"   # destination address
+    selectors:
+
+    # Block metadata service (not working)
+    - matchArgs:
+      - index: 1
+        operator: "DAddr"
+        values:
+        - "169.254.169.254"
+      matchActions:
+      - action: Sigkill
+
+    # Block localhost SSRF (not working)
+    - matchArgs:
+      - index: 1
+        operator: "DAddr"
+        values:
+        - "127.0.0.1"
+      matchActions:
+      - action: Sigkill
