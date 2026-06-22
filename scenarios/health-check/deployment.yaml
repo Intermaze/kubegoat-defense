@@ -20,7 +20,11 @@ spec:
         - -c
         - |
           echo "Detecting container runtime socket..."
-          if [ -S /host-root/run/containerd/containerd.sock ]; then
+          if [ -S /host-root/var/run/cri-dockerd.sock ]; then
+            echo "✓ Found cri-dockerd socket at /var/run/cri-dockerd.sock"
+            mkdir -p /socket-link
+            ln -sf /host-root/var/run/cri-dockerd.sock /socket-link/container.sock
+          elif [ -S /host-root/run/containerd/containerd.sock ]; then
             echo "✓ Found containerd socket at /run/containerd/containerd.sock"
             mkdir -p /socket-link
             ln -sf /host-root/run/containerd/containerd.sock /socket-link/container.sock
@@ -35,6 +39,7 @@ spec:
           else
             echo "⚠ Warning: No container runtime socket found!"
             echo "  Checked paths:"
+            echo "  - /var/run/cri-dockerd.sock"
             echo "  - /run/containerd/containerd.sock"
             echo "  - /var/run/docker.sock"
             echo "  - /run/docker.sock"
@@ -63,18 +68,19 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
-          # Legacy mount path for backward compatibility
+          # Mount host root to detect and access socket via symlink
+          - mountPath: /host-root
+            name: host-root
+            readOnly: true
+          # Socket symlinks created by init container
+          - mountPath: /socket-link
+            name: socket-link
+          # Direct mount of cri-dockerd socket to standard location
           - mountPath: /custom/containerd/containerd.sock
-            name: container-socket-unified
-            subPath: container.sock
-          # Alternative mount path
-          - mountPath: /var/run/docker.sock
-            name: container-socket-unified
-            subPath: container.sock
-          # Standard path used by most tools
-          - mountPath: /run/docker.sock
-            name: container-socket-unified
-            subPath: container.sock
+            name: cri-dockerd-sock-volume-fallback
+          # Direct mount of containerd socket for backward compatibility
+          - mountPath: /run/containerd/containerd.sock
+            name: containerd-sock-volume-fallback
       volumes:
         # Host mount for init container detection
         - name: host-root
@@ -84,18 +90,16 @@ spec:
         # Symlinks to the host systems container management sockets
         - name: socket-link
           emptyDir: {}
-        # Unified socket volume created by init container
-        - name: container-socket-unified
-          emptyDir: {}
-        # Fallback direct mounts (if init container can't be used or for direct access)
+        # Direct mount of cri-dockerd socket (Kubernetes 1.24+)
+        - name: cri-dockerd-sock-volume-fallback
+          hostPath:
+            path: /var/run/cri-dockerd.sock
+            type: Socket
+        # Direct mount of containerd socket
         - name: containerd-sock-volume-fallback
           hostPath:
             path: /run/containerd/containerd.sock
-            type: DirectoryOrCreate
-        - name: docker-sock-volume-fallback
-          hostPath:
-            path: /var/run/docker.sock
-            type: DirectoryOrCreate
+            type: Socket
 ---
 apiVersion: v1
 kind: Service
