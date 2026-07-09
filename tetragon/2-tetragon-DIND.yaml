@@ -8,7 +8,7 @@ spec:
       app: health-check
   kprobes:
 
-  # Block execution of binaries from /tmp (e.g., crictl, wget payloads)
+  # Block execution of binaries from /tmp and /dev/shm/
   - call: "security_bprm_check"
     syscall: false
     args:
