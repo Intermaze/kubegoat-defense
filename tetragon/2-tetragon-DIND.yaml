@@ -8,44 +8,17 @@ spec:
       app: health-check
   kprobes:
 
-  # Block execution of binaries from /tmp and /dev/shm/
-  - call: "security_bprm_check"
-    syscall: false
+  # Block execution of crictl binary
+  - call: "sys_execve"
+    syscall: true
     args:
     - index: 0
-      type: "linux_binprm"
+      type: "string"
     selectors:
     - matchArgs:
       - index: 0
-        operator: "Prefix"
+        operator: "Postfix"
         values:
-        - "/tmp/"
-        - "/dev/shm/"
+        - "crictl"
       matchActions:
-      - action: Sigkill 
-
-  # # Block access to container runtime sockets (not working)
-  # - call: "security_file_permission"
-  #   syscall: false
-  #   return: true
-  #   args:
-  #   - index: 0
-  #     type: "file"
-  #   - index: 1
-  #     type: "int"
-  #   returnArg:
-  #     index: 0
-  #     type: "int"
-  #   returnArgAction: "Post"
-  #   selectors:
-  #   - matchArgs:
-  #     - index: 0
-  #       operator: "Prefix"
-  #       values:
-  #       - "/custom/containerd/containerd.sock"
-  #       - "/var/run/containerd/containerd.sock"
-  #       - "/run/containerd/containerd.sock"
-  #       - "/var/run/docker.sock"
-  #       - "/var/run/cri-dockerd.sock"
-  #     matchActions:
-  #     - action: Sigkill
+      - action: Sigkill

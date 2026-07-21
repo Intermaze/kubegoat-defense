@@ -12,9 +12,5 @@ spec:
   - call: "sys_chroot"
     syscall: true
     selectors:
-    - matchBinaries:
-      - operator: "In"
-        values:
-        - "/usr/sbin/chroot"
-      matchActions:
+    - matchActions:
       - action: Sigkill
